@@ -1,5 +1,5 @@
 database:
-    url: "postgres://soybean:soybean@123.@pgbouncer:6432/soybean_admin_rust"
+    url: "postgres://postgres:123456@localhost:5432/soybean_admin_rust"
     max_connections: 10
     min_connections: 1
     connect_timeout: 30

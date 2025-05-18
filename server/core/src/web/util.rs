@@ -1,4 +1,5 @@
 use axum::http::HeaderMap;
+use sea_orm::{ColumnTrait, Condition};
 
 /// 客户端 IP 地址处理工具
 ///
@@ -122,6 +123,62 @@ impl ClientIp {
             .and_then(|h| h.to_str().ok())
             .map(|ip_str| ip_str.split(',').map(|ip| ip.trim().to_string()).collect())
             .unwrap_or_default()
+    }
+}
+
+#[macro_export]
+macro_rules! build_query_rules {
+    ($params:expr, [$(($field:ident, $col:expr, $qtype:expr)),* $(,)?]) => {
+        vec![
+            $(
+                FieldRule::Str(&$params.$field, $col, $qtype)
+            ),*
+        ]
+    };
+}
+
+#[allow(dead_code)]
+pub enum QueryType {
+    Contains,
+    Eq,
+    In,
+    NotIn,
+}
+
+#[allow(dead_code)]
+pub enum FieldRule<'a, U> {
+    Str(&'a Option<String>, U, QueryType),
+}
+
+pub trait QueryConditionBuilder<C> {
+    fn build_condition(&self) -> Option<Condition>;
+}
+
+// 步骤 2：为不同规则类型实现 trait
+impl<'a, C> QueryConditionBuilder<C> for FieldRule<'a, C>
+where
+    C: ColumnTrait + Clone,
+{
+    fn build_condition(&self) -> Option<Condition> {
+        match self {
+            FieldRule::Str(value, column, query_type) => {
+                value.as_deref().and_then(|s| {
+                    let expr = match query_type {
+                        QueryType::Contains => column.like(format!("%{s}%")),
+                        QueryType::Eq => column.eq(s),
+                        QueryType::In => {
+                            let values = s.split(',').filter(|s| !s.is_empty());
+                            if values.clone().next().is_none() {
+                                return None;
+                            }
+                            column.is_in(values)
+                        },
+                        _ => return None,
+                    };
+                    Some(Condition::all().add(expr))
+                })
+            },
+        }
     }
 }
 

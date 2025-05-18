@@ -1,5 +1,5 @@
 database:
-    url: "postgres://soybean:soybean@123.@localhost:6432/soybean_admin_rust"
+    url: "postgres://postgres:123456@localhost:5432/soybean_admin_rust"
     max_connections: 10
     min_connections: 1
     connect_timeout: 30
@@ -13,7 +13,7 @@ jwt:
     expire: 7200
 redis:
     mode: single
-    url: "redis://:123456@localhost:6379/2"
+    url: "redis://localhost:6379/0"
 # 由于本项目最终目标可能仅仅作为一般rbac项目,因此redis作为可选组件,可以根据实际情况进行按需使用
 # 有需求自行取消注释
 # redis:

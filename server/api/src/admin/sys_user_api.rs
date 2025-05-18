@@ -28,6 +28,7 @@ impl SysUserApi {
         user: User,
     ) -> Result<Res<PaginatedData<UserWithoutPassword>>, AppError> {
         print!("user is {:#?}", user);
+        println!("keywords: {:?}", params);
         service
             .find_paginated_users(params)
             .await

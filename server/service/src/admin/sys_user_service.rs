@@ -1,10 +1,11 @@
+use server_core::web::util::QueryConditionBuilder;
 use async_trait::async_trait;
 use chrono::Local;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, EntityTrait, IntoActiveModel, PaginatorTrait,
     QueryFilter, Set,
 };
-use server_core::web::{error::AppError, page::PaginatedData};
+use server_core::web::{error::AppError, page::PaginatedData, util::FieldRule, util::QueryType};
 use server_model::admin::{
     entities::{
         prelude::SysUser,
@@ -17,7 +18,7 @@ use server_model::admin::{
 };
 use server_utils::SecureUtil;
 use ulid::Ulid;
-
+use server_core::build_query_rules;
 use super::sys_user_error::UserError;
 use crate::helper::db_helper;
 
@@ -81,9 +82,25 @@ impl TUserService for SysUserService {
         let db = db_helper::get_db_connection().await?;
         let mut query = SysUser::find();
 
-        if let Some(ref keywords) = params.keywords {
-            let condition = Condition::any().add(SysUserColumn::Username.contains(keywords));
-            query = query.filter(condition);
+        let field_rules = build_query_rules!(
+            params,
+            [
+                (username, SysUserColumn::Username, QueryType::Contains),
+                (nick_name, SysUserColumn::NickName, QueryType::Contains),
+                (phone_number, SysUserColumn::PhoneNumber, QueryType::Eq),
+                (status, SysUserColumn::Status, QueryType::In)
+            ]
+        );
+
+        // 动态构建查询条件
+        let conditions = field_rules
+            .iter()
+            .filter_map(|rule| rule.build_condition())
+            .fold(Condition::all(), |acc, cond| acc.add(cond));
+
+        // 应用条件（如果至少有一个有效条件）
+        if !conditions.is_empty() {
+            query = query.filter(conditions);
         }
 
         let total = query
