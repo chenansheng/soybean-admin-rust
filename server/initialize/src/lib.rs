@@ -12,7 +12,6 @@ pub use redis_initialization::{init_primary_redis, init_redis_pools};
 pub use router_initialization::initialize_admin_router;
 pub use server_global::{project_error, project_info};
 pub use server_initialization::get_server_address;
-pub use service_initialization::initialize_service_config;
 
 mod access_key_initialization;
 mod aws_s3_initialization;
@@ -27,8 +26,6 @@ mod mongo_initialization;
 mod redis_initialization;
 mod router_initialization;
 mod server_initialization;
-mod service_initialization;
-
 // TODO: axum_test_helpers不兼容axum 0.8.x
 // #[cfg(test)]
 // mod tests {

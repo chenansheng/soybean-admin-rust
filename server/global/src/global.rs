@@ -37,20 +37,6 @@ pub async fn get_config<T: 'static + Any + Send + Sync>() -> Option<Arc<T>> {
         .and_then(|config| config.clone().downcast::<T>().ok())
 }
 
-pub static GLOBAL_SERVICE: Lazy<RwLock<HashMap<String, Arc<dyn Any + Send + Sync>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
-pub async fn init_service_config<T: 'static + Any + Send + Sync>(service_type: &str, service: T) {
-    let mut context = GLOBAL_SERVICE.write().await;
-    context.insert(service_type.to_string(), Arc::new(service));
-}
-pub async fn get_service_config<T: 'static + Any + Send + Sync>(service_type: &str) -> Option<Arc<T>> {
-    let context = GLOBAL_SERVICE.read().await;
-    context
-        .get(service_type)
-        .and_then(|config| config.clone().downcast::<T>().ok())
-}
-
 //*****************************************************************************
 // 数据库连接
 //*****************************************************************************

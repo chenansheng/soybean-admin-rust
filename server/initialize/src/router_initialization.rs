@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::{initialize_casbin, project_error, project_info};
 use axum::{body::Body, http::StatusCode, response::IntoResponse, Extension, Router};
 use axum_casbin::CasbinAxumLayer;
 use chrono::Local;
@@ -12,6 +13,7 @@ use server_core::sign::{
 };
 use server_core::web::{RequestId, RequestIdLayer};
 use server_global::global::{clear_routes, get_collected_routes, get_config};
+use server_global::{merge_router, register_services};
 use server_middleware::jwt_auth_middleware;
 use server_router::admin::{
     SysAccessKeyRouter, SysAuthenticationRouter, SysDomainRouter, SysEndpointRouter,
@@ -28,17 +30,9 @@ use server_service::{
 };
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
-use crate::{initialize_casbin, project_error, project_info};
 
-// #[derive(Clone)]
-// pub enum Services<T: Send + Sync + 'static> {
-//     None(std::marker::PhantomData<T>),
-//     Single(Arc<T>),
-// }
-
-#[derive(Clone)]
-pub enum Services {
-    None(std::marker::PhantomData::<()>),
+// 使用宏生成所有服务枚举
+register_services! {
     SysAuthService(SysAuthService),
     SysAuthorizationService(SysAuthorizationService),
     SysMenuService(SysMenuService),
@@ -51,7 +45,6 @@ pub enum Services {
     SysOperationLogService(SysOperationLogService),
     SysOrganizationService(SysOrganizationService),
 }
-
 async fn apply_layers(
     router: Router,
     services: Vec<Services>,
@@ -62,22 +55,10 @@ async fn apply_layers(
     audience: Audience,
 ) -> Router {
     let mut router = router;
-    for service in services {
-        router = match service {
-            Services::None(_) => router,
-            Services::SysAuthService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysAuthorizationService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysMenuService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysUserService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysDomainService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysRoleService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysEndpointService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysAccessKeyService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysLoginLogService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysOperationLogService(service) => router.layer(Extension(Arc::new(service))),
-            Services::SysOrganizationService(service) => router.layer(Extension(Arc::new(service))),
-        };
-    }
+    // 使用迭代器折叠处理所有服务
+    router = services
+        .into_iter()
+        .fold(router, |acc, service| service.apply_layer(acc));
 
     router = router
         .layer(
@@ -184,155 +165,165 @@ pub async fn initialize_admin_router() -> Router {
     let casbin = Some(casbin_layer);
     let mut app = Router::new();
 
-    macro_rules! merge_router {
-        ($router:expr, $service:expr, $need_casbin:expr, $need_auth:expr, $api_validation:expr) => {
-            app = app.merge(
-                apply_layers(
-                    $router,
-                    $service,
-                    $need_casbin,
-                    $need_auth,
-                    $api_validation,
-                    casbin.clone(),
-                    audience,
-                )
-                .await,
-            );
-        };
-    }
-
     merge_router!(
+        app,
         SysAuthenticationRouter::init_authentication_router().await,
         vec![Services::SysAuthService(SysAuthService)],
         false,
         false,
-        None
+        None,
+        casbin,
+        audience
     );
 
     merge_router!(
+        app,
         SysAuthenticationRouter::init_authorization_router().await,
-        vec![Services::SysAuthService(SysAuthService), Services::SysAuthorizationService(SysAuthorizationService)],
+        vec![
+            Services::SysAuthService(SysAuthService),
+            Services::SysAuthorizationService(SysAuthorizationService)
+        ],
         false,
         false,
-        None
+        None,
+        casbin,
+        audience
     );
 
-    // let auth_router = SysAuthenticationRouter::init_authorization_router()
-    //     .await
-    //     .layer(Extension(Arc::new(SysAuthService) as Arc<SysAuthService>))
-    //     .layer(Extension(
-    //         Arc::new(SysAuthorizationService) as Arc<SysAuthorizationService>
-    //     ));
-    //
-    // let auth_router = apply_layers(
-    //     auth_router,
-    //     Services::None(std::marker::PhantomData::<()>),
-    //     true,
-    //     true,
-    //     None,
-    //     casbin.clone(),
-    //     audience,
-    // )
-    // .await;
-    //
-    // app = app.merge(auth_router);
-
     merge_router!(
+        app,
         SysAuthenticationRouter::init_protected_router().await,
         vec![Services::SysAuthService(SysAuthService)],
         false,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
 
     merge_router!(
+        app,
         SysMenuRouter::init_menu_router().await,
         vec![Services::SysMenuService(SysMenuService)],
         false,
         false,
-        None
+        None,
+        casbin,
+        audience
     );
 
     merge_router!(
+        app,
         SysMenuRouter::init_protected_menu_router().await,
         vec![Services::SysMenuService(SysMenuService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
 
     merge_router!(
+        app,
         SysUserRouter::init_user_router().await,
         vec![Services::SysUserService(SysUserService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysDomainRouter::init_domain_router().await,
         vec![Services::SysDomainService(SysDomainService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysRoleRouter::init_role_router().await,
         vec![Services::SysRoleService(SysRoleService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysEndpointRouter::init_endpoint_router().await,
         vec![Services::SysEndpointService(SysEndpointService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysAccessKeyRouter::init_access_key_router().await,
         vec![Services::SysAccessKeyService(SysAccessKeyService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysLoginLogRouter::init_login_log_router().await,
         vec![Services::SysLoginLogService(SysLoginLogService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysOperationLogRouter::init_operation_log_router().await,
         vec![Services::SysOperationLogService(SysOperationLogService)],
         true,
         true,
-        None
+        None,
+        casbin,
+        audience
     );
 
     merge_router!(
+        app,
         SysOrganizationRouter::init_organization_router().await,
         vec![Services::SysOrganizationService(SysOrganizationService)],
         false,
         false,
-        None
+        None,
+        casbin,
+        audience
     );
 
-    // sandbox
     merge_router!(
+        app,
         SysSandboxRouter::init_simple_sandbox_router().await,
         vec![Services::None(std::marker::PhantomData::<()>)],
         false,
         false,
-        Some(simple_validation)
+        Some(simple_validation),
+        casbin,
+        audience
     );
     merge_router!(
+        app,
         SysSandboxRouter::init_complex_sandbox_router().await,
         vec![Services::None(std::marker::PhantomData::<()>)],
         false,
         false,
-        Some(complex_validation)
+        Some(complex_validation),
+        casbin,
+        audience
     );
 
     app = app.fallback(handler_404);
