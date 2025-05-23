@@ -18,7 +18,7 @@ pub trait TLoginLogService {
         params: LoginLogPageRequest,
     ) -> Result<PaginatedData<SysLoginLogModel>, AppError>;
 }
-
+#[derive(Clone)]
 pub struct SysLoginLogService;
 
 #[async_trait]

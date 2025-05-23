@@ -31,7 +31,7 @@ pub trait TEndpointService {
 
     async fn tree_endpoint(&self) -> Result<Vec<EndpointTree>, AppError>;
 }
-
+#[derive(Clone)]
 pub struct SysEndpointService;
 
 impl SysEndpointService {

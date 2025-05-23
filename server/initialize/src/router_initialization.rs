@@ -28,28 +28,56 @@ use server_service::{
 };
 use tower_http::trace::TraceLayer;
 use tracing::info_span;
-
 use crate::{initialize_casbin, project_error, project_info};
 
+// #[derive(Clone)]
+// pub enum Services<T: Send + Sync + 'static> {
+//     None(std::marker::PhantomData<T>),
+//     Single(Arc<T>),
+// }
+
 #[derive(Clone)]
-pub enum Services<T: Send + Sync + 'static> {
-    None(std::marker::PhantomData<T>),
-    Single(Arc<T>),
+pub enum Services {
+    None(std::marker::PhantomData::<()>),
+    SysAuthService(SysAuthService),
+    SysAuthorizationService(SysAuthorizationService),
+    SysMenuService(SysMenuService),
+    SysUserService(SysUserService),
+    SysDomainService(SysDomainService),
+    SysRoleService(SysRoleService),
+    SysEndpointService(SysEndpointService),
+    SysAccessKeyService(SysAccessKeyService),
+    SysLoginLogService(SysLoginLogService),
+    SysOperationLogService(SysOperationLogService),
+    SysOrganizationService(SysOrganizationService),
 }
 
-async fn apply_layers<T: Send + Sync + 'static>(
+async fn apply_layers(
     router: Router,
-    services: Services<T>,
+    services: Vec<Services>,
     need_casbin: bool,
     need_auth: bool,
     api_validation: Option<ApiKeyValidation>,
     casbin: Option<CasbinAxumLayer>,
     audience: Audience,
 ) -> Router {
-    let mut router = match services {
-        Services::None(_) => router,
-        Services::Single(service) => router.layer(Extension(service)),
-    };
+    let mut router = router;
+    for service in services {
+        router = match service {
+            Services::None(_) => router,
+            Services::SysAuthService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysAuthorizationService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysMenuService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysUserService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysDomainService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysRoleService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysEndpointService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysAccessKeyService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysLoginLogService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysOperationLogService(service) => router.layer(Extension(Arc::new(service))),
+            Services::SysOrganizationService(service) => router.layer(Extension(Arc::new(service))),
+        };
+    }
 
     router = router
         .layer(
@@ -157,25 +185,11 @@ pub async fn initialize_admin_router() -> Router {
     let mut app = Router::new();
 
     macro_rules! merge_router {
-        ($router:expr, None, $need_casbin:expr, $need_auth:expr, $api_validation:expr) => {
-            app = app.merge(
-                apply_layers(
-                    $router,
-                    Services::None(std::marker::PhantomData::<()>),
-                    $need_casbin,
-                    $need_auth,
-                    $api_validation,
-                    casbin.clone(),
-                    audience,
-                )
-                .await,
-            );
-        };
         ($router:expr, $service:expr, $need_casbin:expr, $need_auth:expr, $api_validation:expr) => {
             app = app.merge(
                 apply_layers(
                     $router,
-                    Services::Single(Arc::new($service)),
+                    $service,
                     $need_casbin,
                     $need_auth,
                     $api_validation,
@@ -189,35 +203,43 @@ pub async fn initialize_admin_router() -> Router {
 
     merge_router!(
         SysAuthenticationRouter::init_authentication_router().await,
-        SysAuthService,
+        vec![Services::SysAuthService(SysAuthService)],
         false,
         false,
         None
     );
 
-    let auth_router = SysAuthenticationRouter::init_authorization_router()
-        .await
-        .layer(Extension(Arc::new(SysAuthService) as Arc<SysAuthService>))
-        .layer(Extension(
-            Arc::new(SysAuthorizationService) as Arc<SysAuthorizationService>
-        ));
+    merge_router!(
+        SysAuthenticationRouter::init_authorization_router().await,
+        vec![Services::SysAuthService(SysAuthService), Services::SysAuthorizationService(SysAuthorizationService)],
+        false,
+        false,
+        None
+    );
 
-    let auth_router = apply_layers(
-        auth_router,
-        Services::None(std::marker::PhantomData::<()>),
-        true,
-        true,
-        None,
-        casbin.clone(),
-        audience,
-    )
-    .await;
-
-    app = app.merge(auth_router);
+    // let auth_router = SysAuthenticationRouter::init_authorization_router()
+    //     .await
+    //     .layer(Extension(Arc::new(SysAuthService) as Arc<SysAuthService>))
+    //     .layer(Extension(
+    //         Arc::new(SysAuthorizationService) as Arc<SysAuthorizationService>
+    //     ));
+    //
+    // let auth_router = apply_layers(
+    //     auth_router,
+    //     Services::None(std::marker::PhantomData::<()>),
+    //     true,
+    //     true,
+    //     None,
+    //     casbin.clone(),
+    //     audience,
+    // )
+    // .await;
+    //
+    // app = app.merge(auth_router);
 
     merge_router!(
         SysAuthenticationRouter::init_protected_router().await,
-        SysAuthService,
+        vec![Services::SysAuthService(SysAuthService)],
         false,
         true,
         None
@@ -225,7 +247,7 @@ pub async fn initialize_admin_router() -> Router {
 
     merge_router!(
         SysMenuRouter::init_menu_router().await,
-        SysMenuService,
+        vec![Services::SysMenuService(SysMenuService)],
         false,
         false,
         None
@@ -233,7 +255,7 @@ pub async fn initialize_admin_router() -> Router {
 
     merge_router!(
         SysMenuRouter::init_protected_menu_router().await,
-        SysMenuService,
+        vec![Services::SysMenuService(SysMenuService)],
         true,
         true,
         None
@@ -241,49 +263,49 @@ pub async fn initialize_admin_router() -> Router {
 
     merge_router!(
         SysUserRouter::init_user_router().await,
-        SysUserService,
+        vec![Services::SysUserService(SysUserService)],
         true,
         true,
         None
     );
     merge_router!(
         SysDomainRouter::init_domain_router().await,
-        SysDomainService,
+        vec![Services::SysDomainService(SysDomainService)],
         true,
         true,
         None
     );
     merge_router!(
         SysRoleRouter::init_role_router().await,
-        SysRoleService,
+        vec![Services::SysRoleService(SysRoleService)],
         true,
         true,
         None
     );
     merge_router!(
         SysEndpointRouter::init_endpoint_router().await,
-        SysEndpointService,
+        vec![Services::SysEndpointService(SysEndpointService)],
         true,
         true,
         None
     );
     merge_router!(
         SysAccessKeyRouter::init_access_key_router().await,
-        SysAccessKeyService,
+        vec![Services::SysAccessKeyService(SysAccessKeyService)],
         true,
         true,
         None
     );
     merge_router!(
         SysLoginLogRouter::init_login_log_router().await,
-        SysLoginLogService,
+        vec![Services::SysLoginLogService(SysLoginLogService)],
         true,
         true,
         None
     );
     merge_router!(
         SysOperationLogRouter::init_operation_log_router().await,
-        SysOperationLogService,
+        vec![Services::SysOperationLogService(SysOperationLogService)],
         true,
         true,
         None
@@ -291,7 +313,7 @@ pub async fn initialize_admin_router() -> Router {
 
     merge_router!(
         SysOrganizationRouter::init_organization_router().await,
-        SysOrganizationService,
+        vec![Services::SysOrganizationService(SysOrganizationService)],
         false,
         false,
         None
@@ -300,14 +322,14 @@ pub async fn initialize_admin_router() -> Router {
     // sandbox
     merge_router!(
         SysSandboxRouter::init_simple_sandbox_router().await,
-        None,
+        vec![Services::None(std::marker::PhantomData::<()>)],
         false,
         false,
         Some(simple_validation)
     );
     merge_router!(
         SysSandboxRouter::init_complex_sandbox_router().await,
-        None,
+        vec![Services::None(std::marker::PhantomData::<()>)],
         false,
         false,
         Some(complex_validation)

@@ -14,6 +14,8 @@ async fn main() {
     server_initialize::initialize_log_tracing().await;
     // 初始化配置
     server_initialize::initialize_config(config_path).await;
+    // 初始化服务
+    server_initialize::initialize_service_config().await;
     // 初始化数据库连接池和验证器
     let _ = server_initialize::init_xdb().await;
     // 初始化主数据库连接池和验证器

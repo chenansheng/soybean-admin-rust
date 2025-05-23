@@ -32,6 +32,7 @@ pub trait TOperationLogService {
     async fn handle_operation_log_event(event: &OperationLogContext) -> Result<(), AppError>;
 }
 
+#[derive(Clone)]
 pub struct SysOperationLogService;
 
 #[async_trait]

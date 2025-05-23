@@ -19,6 +19,7 @@ pub trait TOrganizationService {
     ) -> Result<PaginatedData<SysOrganizationModel>, AppError>;
 }
 
+#[derive(Clone)]
 pub struct SysOrganizationService;
 
 #[async_trait]
