@@ -233,6 +233,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysDomainRouter::init_domain_router().await,
@@ -243,6 +244,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysRoleRouter::init_role_router().await,
@@ -253,6 +255,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysEndpointRouter::init_endpoint_router().await,
@@ -263,6 +266,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysAccessKeyRouter::init_access_key_router().await,
@@ -273,6 +277,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysLoginLogRouter::init_login_log_router().await,
@@ -283,6 +288,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysOperationLogRouter::init_operation_log_router().await,
@@ -315,6 +321,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
+    
     merge_router!(
         app,
         SysSandboxRouter::init_complex_sandbox_router().await,
