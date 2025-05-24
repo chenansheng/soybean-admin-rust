@@ -33,17 +33,17 @@ use tracing::info_span;
 
 // 使用宏生成所有服务枚举
 register_services! {
-    SysAuthService(SysAuthService),
-    SysAuthorizationService(SysAuthorizationService),
-    SysMenuService(SysMenuService),
-    SysUserService(SysUserService),
-    SysDomainService(SysDomainService),
-    SysRoleService(SysRoleService),
-    SysEndpointService(SysEndpointService),
-    SysAccessKeyService(SysAccessKeyService),
-    SysLoginLogService(SysLoginLogService),
-    SysOperationLogService(SysOperationLogService),
-    SysOrganizationService(SysOrganizationService),
+    Auth(SysAuthService),
+    Authorization(SysAuthorizationService),
+    Menu(SysMenuService),
+    User(SysUserService),
+    Domain(SysDomainService),
+    Role(SysRoleService),
+    Endpoint(SysEndpointService),
+    AccessKey(SysAccessKeyService),
+    LoginLog(SysLoginLogService),
+    OperationLog(SysOperationLogService),
+    Organization(SysOrganizationService),
 }
 async fn apply_layers(
     router: Router,
@@ -168,7 +168,7 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysAuthenticationRouter::init_authentication_router().await,
-        vec![Services::SysAuthService(SysAuthService)],
+        vec![Services::Auth(SysAuthService)],
         false,
         false,
         None,
@@ -180,8 +180,8 @@ pub async fn initialize_admin_router() -> Router {
         app,
         SysAuthenticationRouter::init_authorization_router().await,
         vec![
-            Services::SysAuthService(SysAuthService),
-            Services::SysAuthorizationService(SysAuthorizationService)
+            Services::Auth(SysAuthService),
+            Services::Authorization(SysAuthorizationService)
         ],
         false,
         false,
@@ -193,7 +193,7 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysAuthenticationRouter::init_protected_router().await,
-        vec![Services::SysAuthService(SysAuthService)],
+        vec![Services::Auth(SysAuthService)],
         false,
         true,
         None,
@@ -204,7 +204,7 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysMenuRouter::init_menu_router().await,
-        vec![Services::SysMenuService(SysMenuService)],
+        vec![Services::Menu(SysMenuService)],
         false,
         false,
         None,
@@ -215,7 +215,7 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysMenuRouter::init_protected_menu_router().await,
-        vec![Services::SysMenuService(SysMenuService)],
+        vec![Services::Menu(SysMenuService)],
         true,
         true,
         None,
@@ -226,73 +226,73 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysUserRouter::init_user_router().await,
-        vec![Services::SysUserService(SysUserService)],
+        vec![Services::User(SysUserService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysDomainRouter::init_domain_router().await,
-        vec![Services::SysDomainService(SysDomainService)],
+        vec![Services::Domain(SysDomainService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysRoleRouter::init_role_router().await,
-        vec![Services::SysRoleService(SysRoleService)],
+        vec![Services::Role(SysRoleService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysEndpointRouter::init_endpoint_router().await,
-        vec![Services::SysEndpointService(SysEndpointService)],
+        vec![Services::Endpoint(SysEndpointService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysAccessKeyRouter::init_access_key_router().await,
-        vec![Services::SysAccessKeyService(SysAccessKeyService)],
+        vec![Services::AccessKey(SysAccessKeyService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysLoginLogRouter::init_login_log_router().await,
-        vec![Services::SysLoginLogService(SysLoginLogService)],
+        vec![Services::LoginLog(SysLoginLogService)],
         true,
         true,
         None,
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysOperationLogRouter::init_operation_log_router().await,
-        vec![Services::SysOperationLogService(SysOperationLogService)],
+        vec![Services::OperationLog(SysOperationLogService)],
         true,
         true,
         None,
@@ -303,7 +303,7 @@ pub async fn initialize_admin_router() -> Router {
     merge_router!(
         app,
         SysOrganizationRouter::init_organization_router().await,
-        vec![Services::SysOrganizationService(SysOrganizationService)],
+        vec![Services::Organization(SysOrganizationService)],
         false,
         false,
         None,
@@ -321,7 +321,7 @@ pub async fn initialize_admin_router() -> Router {
         casbin,
         audience
     );
-    
+
     merge_router!(
         app,
         SysSandboxRouter::init_complex_sandbox_router().await,
